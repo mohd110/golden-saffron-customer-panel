@@ -537,6 +537,107 @@ document.addEventListener('DOMContentLoaded', () => {
       // 3. Create Waiter Call
       await createWaiterCall();
     });
+
+    // ==============================================
+    // SOS / COMPLAIN LOGIC
+    // ==============================================
+    const sosBtn = document.getElementById('sos-btn');
+    const sosModal = document.getElementById('sos-modal');
+    const closeSosModal = document.getElementById('close-sos-modal');
+    const submitSosBtn = document.getElementById('submit-sos');
+    const sosReasonInput = document.getElementById('sos-reason-input');
+    const sosOtherReasonGroup = document.getElementById('sos-other-reason-group');
+    const sosOtherReasonInput = document.getElementById('sos-other-reason-input');
+
+    let sosCooldown = false;
+
+    if (sosReasonInput) {
+      sosReasonInput.addEventListener('change', (e) => {
+        if (e.target.value === 'Other') {
+          sosOtherReasonGroup.style.display = 'block';
+        } else {
+          sosOtherReasonGroup.style.display = 'none';
+        }
+      });
+    }
+
+    if (sosBtn) {
+      sosBtn.addEventListener('click', () => {
+        if (sosCooldown) return;
+
+        if (!window.currentSession) {
+          alert("Please start a session (by clicking 'Call Waiter' or scanning the QR code) before sending an SOS.");
+          return;
+        }
+        sosModal.classList.add('active');
+      });
+    }
+
+    if (closeSosModal) {
+      closeSosModal.addEventListener('click', () => {
+        sosModal.classList.remove('active');
+      });
+    }
+
+    if (submitSosBtn) {
+      submitSosBtn.addEventListener('click', async () => {
+        let reason = sosReasonInput.value;
+        if (!reason) {
+          alert("Please select a reason.");
+          return;
+        }
+        if (reason === 'Other') {
+          reason = sosOtherReasonInput.value;
+          if (!reason.trim()) {
+            alert("Please specify the reason.");
+            return;
+          }
+        }
+
+        submitSosBtn.textContent = "Sending...";
+        submitSosBtn.disabled = true;
+
+        const { error } = await window.supabaseClient
+          .from('waiter_calls')
+          .insert({
+            session_id: window.currentSession.id,
+            table_id: window.currentSession.table_id,
+            customer_name: `${window.currentSession.customer_name} (SOS: ${reason})`,
+            request_status: 'pending'
+          });
+
+        if (error) {
+          console.error("SOS Error:", error);
+          alert("Failed to send SOS. Please try again.");
+        } else {
+          showToast("SOS sent! A manager will attend to you.");
+          sosModal.classList.remove('active');
+          sosReasonInput.value = "";
+          sosOtherReasonGroup.style.display = "none";
+          sosOtherReasonInput.value = "";
+          
+          sosCooldown = true;
+          sosBtn.classList.add('disabled');
+          sosBtn.querySelector('span').textContent = 'Wait 60s...';
+          
+          let time = 60;
+          const interval = setInterval(() => {
+            time--;
+            if (time <= 0) {
+              clearInterval(interval);
+              sosCooldown = false;
+              sosBtn.classList.remove('disabled');
+              sosBtn.querySelector('span').textContent = 'SOS / Complain';
+            } else {
+              sosBtn.querySelector('span').textContent = `Wait ${time}s...`;
+            }
+          }, 1000);
+        }
+
+        submitSosBtn.textContent = "Send SOS";
+        submitSosBtn.disabled = false;
+      });
+    }
   }
 
   async function createWaiterCall() {
