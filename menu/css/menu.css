@@ -388,6 +388,48 @@ header {
   pointer-events: none;
 }
 
+.sos-btn.hidden {
+  display: none;
+}
+
+/* =====================================================
+   RESOLVE SOS FLOATING BUTTON
+   ===================================================== */
+.resolve-sos-btn {
+  position: fixed;
+  bottom: 84px;
+  right: 22px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #198754; /* Green */
+  color: var(--text-on-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px 22px;
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(25, 135, 84, 0.40);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  letter-spacing: 0.01em;
+}
+
+.resolve-sos-btn i { font-size: 18px; }
+
+.resolve-sos-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 36px rgba(25, 135, 84, 0.50);
+}
+
+.resolve-sos-btn:active { transform: scale(0.93); }
+
+.resolve-sos-btn.hidden {
+  display: none;
+}
+
 /* Toast */
 .waiter-toast {
   position: fixed;

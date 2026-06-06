@@ -541,6 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==============================================
     // SOS / COMPLAIN LOGIC
     // ==============================================
+    const resolveSosBtn = document.getElementById('resolve-sos-btn');
     const sosBtn = document.getElementById('sos-btn');
     const sosModal = document.getElementById('sos-modal');
     const closeSosModal = document.getElementById('close-sos-modal');
@@ -550,6 +551,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const sosOtherReasonInput = document.getElementById('sos-other-reason-input');
 
     let sosCooldown = false;
+    let activeSosCallId = localStorage.getItem('active_sos_call_id') || null;
+
+    function updateSosUi() {
+      if (activeSosCallId) {
+        if (sosBtn) sosBtn.classList.add('hidden');
+        if (resolveSosBtn) resolveSosBtn.classList.remove('hidden');
+      } else {
+        if (sosBtn) sosBtn.classList.remove('hidden');
+        if (resolveSosBtn) resolveSosBtn.classList.add('hidden');
+      }
+    }
+    
+    updateSosUi();
 
     if (sosReasonInput) {
       sosReasonInput.addEventListener('change', (e) => {
@@ -597,20 +611,29 @@ document.addEventListener('DOMContentLoaded', () => {
         submitSosBtn.textContent = "Sending...";
         submitSosBtn.disabled = true;
 
-        const { error } = await window.supabaseClient
+        const { data, error } = await window.supabaseClient
           .from('waiter_calls')
           .insert({
             session_id: window.currentSession.id,
             table_id: window.currentSession.table_id,
             customer_name: `${window.currentSession.customer_name} (SOS: ${reason})`,
             request_status: 'pending'
-          });
+          })
+          .select()
+          .single();
 
         if (error) {
           console.error("SOS Error:", error);
           alert("Failed to send SOS. Please try again.");
         } else {
           showToast("SOS sent! A manager will attend to you.");
+          
+          if (data && data.id) {
+            activeSosCallId = data.id;
+            localStorage.setItem('active_sos_call_id', data.id);
+            updateSosUi();
+          }
+
           sosModal.classList.remove('active');
           sosReasonInput.value = "";
           sosOtherReasonGroup.style.display = "none";
@@ -636,6 +659,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
         submitSosBtn.textContent = "Send SOS";
         submitSosBtn.disabled = false;
+      });
+    }
+
+    if (resolveSosBtn) {
+      resolveSosBtn.addEventListener('click', async () => {
+        if (!activeSosCallId) return;
+
+        resolveSosBtn.textContent = "Resolving...";
+        resolveSosBtn.disabled = true;
+
+        const { error } = await window.supabaseClient
+          .from('waiter_calls')
+          .update({ request_status: 'completed' })
+          .eq('id', activeSosCallId);
+
+        if (error) {
+          console.error("Resolve SOS Error:", error);
+          alert("Failed to resolve SOS. Please try again.");
+        } else {
+          showToast("Issue marked as resolved. Thank you!");
+          activeSosCallId = null;
+          localStorage.removeItem('active_sos_call_id');
+          updateSosUi();
+        }
+
+        resolveSosBtn.innerHTML = '<i class="ph-fill ph-check-circle"></i><span>Issue Resolved</span>';
+        resolveSosBtn.disabled = false;
       });
     }
   }
